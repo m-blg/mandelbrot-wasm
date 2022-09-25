@@ -1,0 +1,39 @@
+[package]
+name = "lab1-gl"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+#gl = "*"
+#egui = { version = "0.19.0", path = "../egui/crates/egui" }
+#egui_glow = { version = "0.19.0", path = "../egui/crates/egui_glow" }
+#egui-winit = { version = "0.19.0", path = "../egui/crates/egui-winit"}
+
+egui = "0.19.0"
+#egui-winit = "0.19.0"
+egui-winit = { version = "0.19.0", path = "../egui-winit", default-features=false}
+egui_glow = { version = "0.19.0", path = "../egui_glow", features = ["winit"]}
+
+
+winit = "0.27.3"
+glow = "0.11.2"
+log = "0.4"
+
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.6"
+console_log = "0.2.0"
+wasm-bindgen = "0.2.76"
+wasm-bindgen-futures = "0.4.30"
+web-sys = { version = "0.3.53", features = [
+    "Document",
+    "Window",
+    "Element",
+]}
+getrandom = { version = "0.2", features = ["js"] }
+instant = "0.1.12"
+
+# [lib]
+# crate-type = ["cdylib", "rlib"]
