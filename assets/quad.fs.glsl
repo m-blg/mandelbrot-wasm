@@ -1,16 +1,33 @@
-precision mediump float;
+// #extension GL_ARB_shader_bit_encoding : enable
+precision highp float;
 
 in vec2 pos;
 in vec2 uv;
 
 out vec4 color;
 
-uniform vec2 traslation;
-uniform vec2 scale;
+uniform vec2 u_trans;
+uniform vec2 u_scale;
+uniform float[6] u_color_coefs;
+uniform vec2 u_mouse_pos;
 
 vec2
 complex_mul(vec2 lhs, vec2 rhs) {
     return vec2(lhs.x*rhs.x - lhs.y*rhs.y, lhs.x*rhs.y + lhs.y*rhs.x);
+}
+
+// dvec2
+// complex_mul_d(dvec2 lhs, dvec2 rhs) {
+//     return dvec2(lhs.x*rhs.x - lhs.y*rhs.y, lhs.x*rhs.y + lhs.y*rhs.x);
+// }
+
+vec3
+random_color(float t)
+{
+    float x = fract(sin(u_color_coefs[0]*t) + 0.01* u_color_coefs[3]); 
+    float y = fract(sin(u_color_coefs[1]*x) + 0.01* u_color_coefs[4]); 
+    float z = fract(sin(u_color_coefs[2] * (y + x)) + 0.01* u_color_coefs[5]); 
+    return vec3(x, y, z);
 }
 
 float
@@ -19,8 +36,8 @@ mandelbrot(vec2 p)
     vec2 c = p;
     vec2 z = vec2(0.0);
 
-    const int MAX_ITER = 128;
-    const float R = 2.0;
+    const int MAX_ITER = 1000;
+    const float R = 10.0;
 
     for (int i = 0; i < MAX_ITER; i++)
     {
@@ -35,8 +52,11 @@ mandelbrot(vec2 p)
 
 void 
 main() {
-    uv += traslation;
-    uv *= scale;
-    float m = mandelbrot(uv);
-    color = vec4(vec3(m), 1.0);
+    vec2 mpos = vec2(u_mouse_pos.x-0.5, -(u_mouse_pos.y-0.5));
+    vec2 p = vec2(-0.5) + uv;
+    p /= vec2(u_scale);
+    p += vec2(u_trans);
+    float m = mandelbrot(p);
+    color = vec4(random_color(m), 1.0);
+    // color = vec4(vec3(m, 1.0);
 }

@@ -18,6 +18,7 @@ const vec2 uv_a[4] = vec2[4](
 out vec2 pos;
 out vec2 uv;
 
+
 void main() {
     uint ind = ind_a[gl_VertexID];
     pos = pos_a[ind];

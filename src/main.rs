@@ -1,9 +1,12 @@
 use glow::HasContext as _;
 use winit::{
-    event::{Event, WindowEvent},
+    event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, MouseScrollDelta, DeviceEvent},
     event_loop::EventLoop,
-    window::WindowBuilder,
+    window::WindowBuilder, dpi::PhysicalPosition,
 };
+
+mod vector;
+use vector::*;
 
 fn main() {
     unsafe {
@@ -97,7 +100,6 @@ fn main() {
         if !gl.get_program_link_status(program) {
             panic!("{}", gl.get_program_info_log(program));
         }
-        // gl.
 
         for shader in shaders {
             gl.detach_shader(program, shader);
@@ -105,10 +107,19 @@ fn main() {
         }
 
         gl.use_program(Some(program));
-        let translation_u = gl.get_uniform_location(program, "translation");
-        let scale_u = gl.get_uniform_location(program, "scale");
 
-        log::info!("window size: {:?}", window.inner_size());
+        // NOTE(mb): can be optimized out
+        let u_trans = gl.get_uniform_location(program, "u_trans");
+        let u_scale = gl.get_uniform_location(program, "u_scale");
+        let u_color_coefs = gl.get_uniform_location(program, "u_color_coefs");
+        let u_mouse_pos = gl.get_uniform_location(program, "u_mouse_pos");
+
+        let mut translation = vec2f::new(0., 0.);
+        let mut scale = vec2f::new(1.,1.);
+
+        let mut color_coefs = [3., 20., 1., 0., 0., 0.];
+
+        // log::info!("window size: {:?}", window.inner_size());
 
         // let event_loop = EventLoop::new();
 
@@ -131,6 +142,8 @@ fn main() {
 
         let mut clear_color = [0.1, 0.1, 0.1];
 
+
+        let mut mouse_pos = vec2f::new(0.,0.);
         event_loop.run(move |event, _, control_flow| {
             let frame_begin_time = instant::Instant::now();
             let dt_dur = frame_begin_time - prev_frame_time;
@@ -141,9 +154,17 @@ fn main() {
 
             // #[cfg(target_arch = "wasm32")]
             // wasm::log_event(&log_list, &event);
-            // log::debug!("{:?}", event);
-
             match event {
+                
+                Event::DeviceEvent {event, ..} => {
+                    match event {
+                        // DeviceEvent::MouseMotion {delta} => {
+                        //     mouse_pos = vec2f::new(delta.0 as f32, delta.1 as f32);
+                        // },
+                        _ => ()
+                    }
+                }
+
                 Event::WindowEvent {
                     event,
                     window_id,
@@ -154,6 +175,35 @@ fn main() {
                         gl.delete_program(program);
                         gl.delete_vertex_array(vao);
                     }
+
+                    match event {
+                        WindowEvent::KeyboardInput {input, ..} => {
+                                        // state: ElementState::Pressed,
+                                        // virtual_keycode: Some(VirtualKeyCode::Escape),
+                            let KeyboardInput {state, virtual_keycode, ..} = input;
+                            let speed = 0.1 / scale.x;
+                            match virtual_keycode {
+                                Some(VirtualKeyCode::W) => translation += vec2f::new(0.,speed),
+                                Some(VirtualKeyCode::S) => translation += vec2f::new(0.,-speed),
+                                Some(VirtualKeyCode::D) => translation += vec2f::new(speed,0.),
+                                Some(VirtualKeyCode::A) => translation += vec2f::new(-speed,-0.),
+                                Some(VirtualKeyCode::Space) => scale = 1.5*scale,
+                                Some(VirtualKeyCode::X) => scale = (1.0/1.5)*scale,
+                                _ => ()
+                            }
+                        },
+                        WindowEvent::CursorMoved {position, ..} => {
+                            mouse_pos.x = position.x as f32;
+                            mouse_pos.y = position.y as f32;
+                        }
+                        WindowEvent::MouseWheel {delta, ..} => {
+                            // log::warn!("{:?}", mouse_pos);
+                            if let MouseScrollDelta::PixelDelta(p) = delta {
+                                scale = ((p.y as f32)*0.001 + 1.)*scale;
+                            }
+                        },
+                        _ => ()
+                    }
                 },
                 Event::MainEventsCleared => {
                     // egui_glow.on_event(&event);
@@ -161,127 +211,114 @@ fn main() {
                     t += 0.01;
                 },
                 Event::RedrawRequested(_) => {
-                    gl.clear_color(0.5*f32::sin(t)+0.5, clear_color[1], clear_color[2], 0.0);
-                    gl.clear(glow::COLOR_BUFFER_BIT);
-                    gl.use_program(Some(program));
-                    // gl.bind_vertex_array(Some(vao));
-                    gl.draw_arrays(glow::TRIANGLES, 0, 6);
-                    // gl.bind_vertex_array(None);
-                    egui_glow.run(&window, |egui_ctx| {
-                        egui::Window::new("title");
-                        egui::Window::new("title2").show(egui_ctx, |ui| {
+                if dt_dur >= ::std::time::Duration::new(0, 1_000_000_000u32 / 60) {
+                    prev_frame_time = frame_begin_time;
 
-                                ui.heading("Hello World!");
-                                // ui.color_edit_button_rgb(&mut clear_color);
+                    {
+                        gl.clear_color(0.5*f32::sin(t)+0.5, clear_color[1], clear_color[2], 0.0);
+                        gl.clear(glow::COLOR_BUFFER_BIT);
+                        gl.use_program(Some(program));
+                        gl.uniform_2_f32(u_trans.as_ref(), translation.x, translation.y);
+                        gl.uniform_2_f32(u_scale.as_ref(), scale.x, scale.y);
+                        gl.uniform_1_f32_slice(u_color_coefs.as_ref(), &color_coefs);
+                        gl.uniform_2_f32(u_mouse_pos.as_ref(), 
+                            mouse_pos.x/window.inner_size().width as f32, 
+                            mouse_pos.y/window.inner_size().height as f32);
+                        // gl.bind_vertex_array(Some(vao));
+                        gl.draw_arrays(glow::TRIANGLES, 0, 6);
+                        // gl.bind_vertex_array(None);
+                        egui_glow.run(&window, |egui_ctx| {
+                            egui::Window::new("Settings")
+                                .resizable(true)
+                                .show(egui_ctx, |mut ui| 
+                                {
+                                    ui.label(format!("{}", 1./dt));
+                                    ui.label("translation");
+                                    gui_vec2(&mut ui, translation.as_mut(), -5_f32..=5_f32);
+                                    ui.label("scale");
+                                    gui_vec2(&mut ui, scale.as_mut(), -5_f32..=5_f32);
+
+                                    ui.label("coloring");
+                                    ui.horizontal(|ui| {
+                                        for c in color_coefs.iter_mut() {
+                                            ui.add(egui::DragValue::new(c));
+                                        }
+                                    });
+
+                                    ui.add_space(30.);
+
+                                    ui.label(
+r"Controls: WASD + space + x, mouse wheel.
+Mandalbrot set: let f(c, z) = z^2 + c; for each complex point p, 
+if sequence f(p, 0), f(p, f(p,0)), f(p, f(p, f(p,0))), ... 
+converges (stays whithin circle with radius R certain number of iterations), 
+then its color - black, otherwise it has random color");
+
+                                });
+
+                                // egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
+
+                                //     ui.heading("Hello World!");
+                                //     // ui.color_edit_button_rgb(&mut clear_color);
+                                // });
                             });
+                    };
 
-                            // egui::SidePanel::left("my_side_panel").show(egui_ctx, |ui| {
-
-                            //     ui.heading("Hello World!");
-                            //     // ui.color_edit_button_rgb(&mut clear_color);
-                            // });
-                        });
 
                     egui_glow.paint(&window);
+                }
                 }
                 _ => (),
             }
         });
-
-
-
-
-    //     let mut t: f32 = 0.;
-
-    //     let mut prev_frame_time = std::time::Instant::now();
-
-    //     event_loop.run(move |event, _, control_flow| {
-
-    //         let frame_begin_time = std::time::Instant::now();
-    //         let dt_dur = frame_begin_time - prev_frame_time;
-    //         let dt = dt_dur.as_secs() as f32 + dt_dur.subsec_nanos() as f32 / 1_000_000_000.0;
-
-    //         *control_flow = ControlFlow::WaitUntil(frame_begin_time + ::std::time::Duration::new(0, 1_000_000_000u32 / 60));
-    //         // *control_flow = ControlFlow::Poll;
-
-
-    //         // let mut redraw = || {
-    //         // };
-
-    //         match event {
-    //             Event::MainEventsCleared => {
-    //                 let gl_window = rs.display.gl_window();
-    //                 // platform
-    //                 //     .prepare_frame(imgui.io_mut(), gl_window.window())
-    //                 //     .expect("Failed to prepare frame");
-    //                 gl_window.window().request_redraw();
-    //             }
-    //             Event::RedrawRequested(_) => { 
-    //                 if dt_dur >= ::std::time::Duration::new(0, 1_000_000_000u32 / 60) {
-    //                     prev_frame_time = frame_begin_time;
-    //                     game::update(dt);
-    //                     game::render(dt, control_flow); 
-    //                 }
-    //             }
-
-    //             Event::WindowEvent { event, .. } => {
-    //                 use glutin::event::WindowEvent;
-    //                 if matches!(event, WindowEvent::CloseRequested | WindowEvent::Destroyed) {
-    //                     *control_flow = glutin::event_loop::ControlFlow::Exit;
-    //                 }
-
-    //                 rs.egui_glium.on_event(&eventyy);
-
-    //                 rs.display.gl_window().window().request_redraw(); // TODO(emilk): ask egui if the events warrants a repaint instead
-    //             }
-
-    //             glutin::event::Event::NewEvents(cause) => match cause {
-    //                 glutin::event::StartCause::ResumeTimeReached { .. } 
-    //                     => rs.display.gl_window().window().request_redraw(),
-    //                 glutin::event::StartCause::Init => (),
-    //                 _ => return,
-    //             },
-    //             _ => (),
-    //         }
-
-    //         // ::std::thread::sleep(::std::time::Duration::new(0, 1_000_000_000u32 / 60));
-    //     });
     }
 }
 
+use egui::Ui;
+use std::ops::RangeInclusive;
+fn gui_slider_vec2(ui: &mut Ui, v: &mut [f32;2], range: RangeInclusive<f32>)  {
+    ui.add(egui::Slider::new(&mut v[0], range.clone()));
+    ui.add(egui::Slider::new(&mut v[1], range.clone()));
+}
+fn gui_vec2(ui: &mut Ui, v: &mut [f32;2], range: RangeInclusive<f32>)  {
+    ui.horizontal(|ui| {
+        ui.add(egui::DragValue::new(&mut v[0]));
+        ui.add(egui::DragValue::new(&mut v[1]));
+    });
+}
 
 // #![allow(clippy::single_match)]
 
 
-pub fn main2() {
-    let event_loop = EventLoop::new();
+// pub fn main2() {
+//     let event_loop = EventLoop::new();
 
-    let window = WindowBuilder::new()
-        .with_title("A fantastic window!")
-        .build(&event_loop)
-        .unwrap();
+//     let window = WindowBuilder::new()
+//         .with_title("A fantastic window!")
+//         .build(&event_loop)
+//         .unwrap();
 
-    #[cfg(target_arch = "wasm32")]
-    let log_list = wasm::insert_canvas_and_create_log_list(&window);
+//     #[cfg(target_arch = "wasm32")]
+//     let log_list = wasm::insert_canvas_and_create_log_list(&window);
 
-    event_loop.run(move |event, _, control_flow| {
-        control_flow.set_wait();
+//     event_loop.run(move |event, _, control_flow| {
+//         control_flow.set_wait();
 
-        #[cfg(target_arch = "wasm32")]
-        wasm::log_event(&log_list, &event);
+//         #[cfg(target_arch = "wasm32")]
+//         wasm::log_event(&log_list, &event);
 
-        match event {
-            Event::WindowEvent {
-                event: WindowEvent::CloseRequested,
-                window_id,
-            } if window_id == window.id() => control_flow.set_exit(),
-            Event::MainEventsCleared => {
-                window.request_redraw();
-            }
-            _ => (),
-        }
-    });
-}
+//         match event {
+//             Event::WindowEvent {
+//                 event: WindowEvent::CloseRequested,
+//                 window_id,
+//             } if window_id == window.id() => control_flow.set_exit(),
+//             Event::MainEventsCleared => {
+//                 window.request_redraw();
+//             }
+//             _ => (),
+//         }
+//     });
+// }
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
