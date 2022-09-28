@@ -112,12 +112,17 @@ fn main() {
         let u_trans = gl.get_uniform_location(program, "u_trans");
         let u_scale = gl.get_uniform_location(program, "u_scale");
         let u_color_coefs = gl.get_uniform_location(program, "u_color_coefs");
-        let u_mouse_pos = gl.get_uniform_location(program, "u_mouse_pos");
+        let u_R = gl.get_uniform_location(program, "u_R");
+        let u_MAX_ITER = gl.get_uniform_location(program, "u_MAX_ITER");
 
-        let mut translation = vec2f::new(0., 0.);
-        let mut scale = vec2f::new(1.,1.);
+        let mut translation = vec2f::new(-0.55, 0.);
+        let mut scale = vec2f::new(0.26,0.26);
 
         let mut color_coefs = [3., 20., 1., 0., 0., 0.];
+
+        let mut MAX_ITER = 1000;
+        let mut R = 10.0;
+
 
         // log::info!("window size: {:?}", window.inner_size());
 
@@ -221,9 +226,11 @@ fn main() {
                         gl.uniform_2_f32(u_trans.as_ref(), translation.x, translation.y);
                         gl.uniform_2_f32(u_scale.as_ref(), scale.x, scale.y);
                         gl.uniform_1_f32_slice(u_color_coefs.as_ref(), &color_coefs);
-                        gl.uniform_2_f32(u_mouse_pos.as_ref(), 
-                            mouse_pos.x/window.inner_size().width as f32, 
-                            mouse_pos.y/window.inner_size().height as f32);
+                        gl.uniform_1_f32(u_R.as_ref(), R);
+                        gl.uniform_1_i32(u_MAX_ITER.as_ref(), MAX_ITER);
+                        //gl.uniform_2_f32(u_mouse_pos.as_ref(), 
+                            //mouse_pos.x/window.inner_size().width as f32, 
+                            //mouse_pos.y/window.inner_size().height as f32);
                         // gl.bind_vertex_array(Some(vao));
                         gl.draw_arrays(glow::TRIANGLES, 0, 6);
                         // gl.bind_vertex_array(None);
@@ -232,27 +239,39 @@ fn main() {
                                 .resizable(true)
                                 .show(egui_ctx, |mut ui| 
                                 {
-                                    ui.label(format!("{}", 1./dt));
-                                    ui.label("translation");
-                                    gui_vec2(&mut ui, translation.as_mut(), -5_f32..=5_f32);
-                                    ui.label("scale");
-                                    gui_vec2(&mut ui, scale.as_mut(), -5_f32..=5_f32);
-
-                                    ui.label("coloring");
+                                    ui.label(format!("fps: {}", 1./dt));
+                                    ui.horizontal(|mut ui| {
+                                        ui.label("translation: ");
+                                        gui_vec2(&mut ui, translation.as_mut(), -5_f32..=5_f32);
+                                    });
+                                    ui.horizontal(|mut ui| {
+                                        ui.label("scale: ");
+                                        gui_vec2(&mut ui, scale.as_mut(), -5_f32..=5_f32);
+                                    });
+                                    ui.label("coloring: ");
                                     ui.horizontal(|ui| {
                                         for c in color_coefs.iter_mut() {
                                             ui.add(egui::DragValue::new(c));
                                         }
                                     });
 
+                                    ui.label("mandelbrot params: ");
+                                    ui.horizontal(|ui| {
+                                        ui.label("R: ");
+                                        ui.add(egui::DragValue::new(&mut R));
+                                        ui.label("max iter: ");
+                                        ui.add(egui::DragValue::new(&mut MAX_ITER));
+                                    });
+
                                     ui.add_space(30.);
 
                                     ui.label(
 r"Controls: WASD + space + x, mouse wheel.
-Mandalbrot set: let f(c, z) = z^2 + c; for each complex point p, 
+Mandelbrot set: let f(c, z) = z^2 + c; for each complex point p, 
 if sequence f(p, 0), f(p, f(p,0)), f(p, f(p, f(p,0))), ... 
-converges (stays whithin circle with radius R certain number of iterations), 
-then its color - black, otherwise it has random color");
+converges (in our case stays whithin circle with radius R certain number of iterations (max iter)), 
+then its color - black, otherwise it has random color, 
+depending on the number of iteration it stays in the circle");
 
                                 });
 

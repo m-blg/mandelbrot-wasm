@@ -9,7 +9,8 @@ out vec4 color;
 uniform vec2 u_trans;
 uniform vec2 u_scale;
 uniform float[6] u_color_coefs;
-uniform vec2 u_mouse_pos;
+uniform float u_R;
+uniform int u_MAX_ITER;
 
 vec2
 complex_mul(vec2 lhs, vec2 rhs) {
@@ -31,15 +32,12 @@ random_color(float t)
 }
 
 float
-mandelbrot(vec2 p) 
+mandelbrot(vec2 p, float R, int MAX_ITER) 
 {
     vec2 c = p;
     vec2 z = vec2(0.0);
 
-    const int MAX_ITER = 1000;
-    const float R = 10.0;
-
-    for (int i = 0; i < MAX_ITER; i++)
+    for (int i = 1; i < MAX_ITER; i++)
     {
         z = complex_mul(z, z) + c;
         if (dot(z,z) > R) {
@@ -52,11 +50,11 @@ mandelbrot(vec2 p)
 
 void 
 main() {
-    vec2 mpos = vec2(u_mouse_pos.x-0.5, -(u_mouse_pos.y-0.5));
+    //vec2 mpos = vec2(u_mouse_pos.x-0.5, -(u_mouse_pos.y-0.5));
     vec2 p = vec2(-0.5) + uv;
     p /= vec2(u_scale);
     p += vec2(u_trans);
-    float m = mandelbrot(p);
+    float m = mandelbrot(p, u_R, u_MAX_ITER);
     color = vec4(random_color(m), 1.0);
     // color = vec4(vec3(m, 1.0);
 }
