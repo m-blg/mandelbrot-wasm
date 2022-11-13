@@ -1,14 +1,36 @@
+<!DOCTYPE html>
 <html>
-  <head>
-    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
-  </head>
-  <body>
-    <!--<canvas id="canvas" width="640" height="480"></canvas>-->
-    <script src="./lab1-gl.js"></script>
-    <script type="module">
-      import init from "./mandelbrot-wasm.js";
 
-      init();
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
+    <title>mandelbrot-wasm</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="c1">
+        <canvas id="canvas"></canvas>
+        <div class="i_fields">
+            <label for="i_width">Canvas size</label>
+            <input type="text" id="ifield_width" name="i_width" placeholder="width" />
+            <label for="i_height">x</label>
+            <input type="text" id="ifield_height" name="i_height" placeholder="height" pattern="\d*" />
+            <button onclick="apply_button_callback()">Apply</button>
+        </div>
+    </div>
+
+    
+    <script type="module">
+        import init from "./mandelbrot-wasm.js";
+        // import init_ifields from "./main.js"
+
+        init();
+        // init_ifields();
     </script>
-  </body>
+    <script src="main.js"></script>
+</body>
+
 </html>

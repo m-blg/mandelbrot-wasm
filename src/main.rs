@@ -2,7 +2,7 @@ use glow::HasContext as _;
 use winit::{
     event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, MouseScrollDelta, DeviceEvent},
     event_loop::EventLoop,
-    window::WindowBuilder, dpi::PhysicalPosition,
+    window::WindowBuilder, dpi::PhysicalPosition, platform::web::WindowBuilderExtWebSys,
 };
 
 mod vector;
@@ -11,17 +11,20 @@ use vector::*;
 fn main() {
     unsafe {
         std::panic::set_hook(Box::new(console_error_panic_hook::hook));
-        console_log::init_with_level(log::Level::Info).expect("Could't initialize logger");
+        console_log::init_with_level(log::Level::Info).expect("Couldn't initialize logger");
 
         let event_loop = EventLoop::new();
 
+        let canvas = wasm::get_canvas_by_id("canvas");        
+        log::warn!("test");
         let window = WindowBuilder::new()
+            .with_canvas(canvas)
             .with_title("A fantastic window!")
             .build(&event_loop)
             .unwrap();
 
 
-        wasm::insert_canvas(&window);
+        // wasm::insert_canvas(&window);
 
         // Create a context from a WebGL2 context on wasm32 targets
         // #[cfg(target_arch = "wasm32")]
@@ -342,6 +345,8 @@ fn gui_vec2(ui: &mut Ui, v: &mut [f32;2], range: RangeInclusive<f32>)  {
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     use wasm_bindgen::prelude::*;
+    use wasm_bindgen::JsCast;
+    use web_sys::HtmlCanvasElement;
     use winit::{event::Event, window::Window};
 
     // #[wasm_bindgen(start)]
@@ -351,6 +356,17 @@ mod wasm {
     //     #[allow(clippy::main_recursion)]
     //     super::main();
     // }
+
+    pub fn get_canvas_by_id(id: &str) -> Option<HtmlCanvasElement> {
+        use winit::platform::web::WindowExtWebSys;
+        let document = web_sys::window().unwrap().document().unwrap();
+        let canvas = document.get_element_by_id(id).unwrap();
+        let canvas: HtmlCanvasElement = canvas
+            .dyn_into::<HtmlCanvasElement>()
+            .map_err(|_| ())
+            .unwrap();
+        Some(canvas)
+    }
 
     pub fn insert_canvas(window: &Window) {
         use winit::platform::web::WindowExtWebSys;

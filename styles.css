@@ -1,0 +1,61 @@
+
+html {
+    /* Remove touch delay: */
+    touch-action: manipulation;
+}
+
+body {
+    /* Light mode background color for what is not covered by the egui canvas,
+    or where the egui canvas is translucent. */
+    background: #c1c1c1;
+}
+
+@media (prefers-color-scheme: dark) {
+    body {
+        /* Dark mode background color for what is not covered by the egui canvas,
+        or where the egui canvas is translucent. */
+        background: #0b0a0a;
+    }
+    label {
+        color: #909090;
+    }
+}
+
+/* Allow canvas to fill entire web page: */
+/* html,
+body {
+    overflow: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100%;
+    width: 100%;
+} */
+
+/* Position canvas in center-top: */
+.c1 {
+    margin-right: auto;
+    margin-left: auto;
+    display: block;
+    position: absolute;
+    /* top: 50%; */
+    left: 50%;
+    transform: translate(-50%, 0%);
+}
+
+label {
+    margin: 10px;
+    color: rgb(2, 2, 2);
+}
+
+.i_fields * {
+    border-radius: 5px;
+}
+.i_fields input {
+    width: 50px;
+}
+.i_fields label[for=i_height] {
+    margin: 0;
+}
+.i_fields button {
+    margin-left: 10px;
+}
